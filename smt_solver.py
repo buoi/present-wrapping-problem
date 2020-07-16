@@ -1,9 +1,8 @@
 from z3 import *
 import sys
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import numpy as np
 from PIL import Image, ImageDraw
-
+print(np.__version__)
 import time
 
 t_start = time.time()
@@ -72,10 +71,36 @@ for d in sorted(m.decls(), key=lambda x: (int(x.name()[1:]), x.name()[0])):
     solution.append(m[d].as_long())
 
 solution = [(solution[i*2],solution[i*2+1]) for i in range(len(solution)//2)]
-print(solution)
-print(present_shape)
+print("solution",solution)
+print("shapes",present_shape)
 
-scale = 20
+pos = np.zeros((n, paper_shape[0], paper_shape[1]), dtype=int)
+
+for i,s in enumerate(solution):
+    pos[i, s[0]:s[0]+present_shape[i][0], s[1]:s[1]+present_shape[i][1]] = 1
+
+superpos = np.sum(pos, axis = 0)
+
+def visual(pos):
+
+    for i in range(paper_shape[0]):
+        for j in range(paper_shape[1]):
+            if pos[i,j] == 1:
+                print('#',end = '')
+            elif pos[i,j] == 0:
+                print('.',end = '')
+            else:
+                print('x',end = '')
+        print()
+    print()
+
+for p in pos:
+    visual(p)
+print('sums to:')
+visual(superpos)
+
+
+scale = 1
 img = Image.new("RGB", (scale * paper_shape[0], scale *paper_shape[1]))
 
 import random
@@ -86,7 +111,7 @@ color = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
 
 for i,s in enumerate(solution):
     img1 = ImageDraw.Draw(img)
-    img1.rectangle([(scale*s[0],scale*(paper_shape[1]- s[1])),(scale*(s[0]+ present_shape[i][0])-1, scale*(paper_shape[1] - present_shape[i][1]- s[1]))],
+    img1.rectangle([(scale*s[0],scale*(paper_shape[1]- s[1])),(scale*(s[0]+ present_shape[i][0]), scale*(paper_shape[1] - present_shape[i][1]- s[1]))],
     fill = color[i])
 
 img.show()
