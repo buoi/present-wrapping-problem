@@ -43,31 +43,58 @@ print(n, paper_shape, present_shape)
 s = Solver()
 
 pos = np.empty((n, paper_shape[0], paper_shape[1]), dtype=object)
-present_pos = []
+
+
 
 # variable creation
 for i in range(paper_shape[0]):
     for j in range(paper_shape[1]):
         for k in range(n):
+            #print(k,i,j)
             pos[k,i,j] = Bool('p'+str(k)+str(i)+str(j))
-        # non-overlaping constraint
-        s.add(Not(Or(*[And(pos[k1,i,j],pos[k2,i,j]) for k1 in range(k) for k2 in range(k1)])))
+        # non-overlapping constraint
+        # at most one layer is occupied for each 2d position
+
+        notoverlap = Not(Or(*[And(pos[k1,i,j], pos[k2,i,j]) for k1 in range(n) for k2 in range(k1)]))
+        #print(notoverlap)
+        s.add(notoverlap)
+
+        # total area occupation assumption:
+        # at least one layer is occupied for each 2d position
+        s.add(Or([pos[k,i,j] for k in range(n)]))
+
 
 # the convolutions
+# for each layer/shape
+# at least one set of variables representing one rect present must be all ture
+# meaning that the layer represents effectively a present
+# here the at most is mandatory
+
+
 for k in range(n):
-    a = []
-    for i in range(paper_shape[0]-present_shape[k][0]):
-        for j in range(paper_shape[1]-present_shape[k][1]):
-            print(k,i,j)
-            a.append(And([And(pos[k,i,j],pos[k,x,y]) for x in range(i+1,i+present_shape[k][0]) for y in range(j+1,j+present_shape[k][1])]))
-    print(a)
-    s.add([Or(ai) for ai in a])
+    conj = []
+    for i in range(paper_shape[0]-present_shape[k][0]+1): # +1 perchè l'occupazione deve arrivare in fondo!
+        for j in range(paper_shape[1]-present_shape[k][1]+1):
+            # at least
+            conj.append(And([pos[k,x,y] for x in range(i,i+present_shape[k][0]) for y in range(j,j+present_shape[k][1])]))
+
+    disj = Or(*conj)
+    if k == n-1:
+        #print(conj)
+        flag =0
+    s.add(disj)
+    #print(conj,len(conj))
+    # at most
+    cc = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(i) if i != j]
+    #print(cc)
+    #s.add((Not(Or(*cc))))
 
 
 print("compiled in:", time.time()-t_start)
-
+print("traversing model...")
 t_start = time.time()
 print(s.check())
+print(s.unsat_core())
 print("solved in:", time.time()-t_start)
 
 m = s.model()
@@ -78,8 +105,8 @@ for k in range(n):
         print()
     print()
 
-print("traversing model...")
-solution = []
+
+
 
 """
 for d in sorted(m.decls(), key=lambda x: (int(x.name()[1:]), x.name()[0])):
