@@ -45,7 +45,6 @@ s = Solver()
 pos = np.empty((n, paper_shape[0], paper_shape[1]), dtype=object)
 
 
-
 # variable creation
 for i in range(paper_shape[0]):
     for j in range(paper_shape[1]):
@@ -59,9 +58,9 @@ for i in range(paper_shape[0]):
         #print(notoverlap)
         s.add(notoverlap)
 
-        # total area occupation assumption:
+        # total area occupation assumption: ===>  NO VALID FOR PERIMETER
         # at least one layer is occupied for each 2d position
-        s.add(Or([pos[k,i,j] for k in range(n)]))
+        #s.add(Or([pos[k,i,j] for k in range(n)]))
 
 
 # the convolutions
@@ -70,24 +69,26 @@ for i in range(paper_shape[0]):
 # meaning that the layer represents effectively a present
 # here the at most is mandatory
 
-
 for k in range(n):
     conj = []
     for i in range(paper_shape[0]-present_shape[k][0]+1): # +1 perchè l'occupazione deve arrivare in fondo!
         for j in range(paper_shape[1]-present_shape[k][1]+1):
             # at least
-            conj.append(And([pos[k,x,y] for x in range(i,i+present_shape[k][0]) for y in range(j,j+present_shape[k][1])]))
+            tmp = []
+            tmp += [pos[k,x,j] for x in range(i,i+present_shape[k][0])]
+            tmp += [pos[k,x,j+present_shape[k][1]-1] for x in range(i,i+present_shape[k][0])]
+            tmp += [pos[k,i,y] for y in range(j+1,j+present_shape[k][1])]
+            tmp += [pos[k,i+present_shape[k][0]-1,y] for y in range(j+1,j+present_shape[k][1])]
+            conj.append(And(*tmp))
 
     disj = Or(*conj)
-    if k == n-1:
-        #print(conj)
-        flag =0
+    print(disj)
     s.add(disj)
     #print(conj,len(conj))
     # at most
     cc = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(i) if i != j]
     #print(cc)
-    #s.add((Not(Or(*cc))))
+    s.add((Not(Or(*cc))))
 
 
 print("compiled in:", time.time()-t_start)
