@@ -81,13 +81,13 @@ for k in range(n):
             tmp += [pos[k,i+present_shape[k][0]-1,y] for y in range(j+1,j+present_shape[k][1])]
             conj.append(And(*tmp))
 
+    # at least
     disj = Or(*conj)
-    print(disj)
     s.add(disj)
-    #print(conj,len(conj))
+
     # at most
     cc = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(i) if i != j]
-    #print(cc)
+    print(cc)
     s.add((Not(Or(*cc))))
 
 

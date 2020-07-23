@@ -61,6 +61,11 @@ print("compiled in:", time.time()-t_start)
 
 t_start = time.time()
 print(s.check())
+
+# Traversing statistics
+for k, v in s.statistics():
+    print "%s : %s" % (k, v)
+
 print("solved in:", time.time()-t_start)
 m = s.model()
 
