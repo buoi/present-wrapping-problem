@@ -2,11 +2,10 @@ from z3 import *
 import sys
 import time
 import numpy as np
-from PIL import Image, ImageDraw
 
 t_start = time.time()
 def read_txt(if_name):
-
+    """read instance from input"""
     n = 0
     paper_shape = []
     present_shape = []
@@ -37,57 +36,67 @@ def read_txt(if_name):
     return n, paper_shape, present_shape
 
 if_name = sys.argv[1]
+
 n, paper_shape, present_shape = read_txt(if_name)
 print(n, paper_shape, present_shape)
 
+present_area = np.sum([present_shape[i][0] * present_shape[i][1] for i in range(n)])
+paper_area = paper_shape[0] * paper_shape[1]
+print('present area:',present_area,'paper area:',paper_area)
+
 s = Solver()
+
+# use a numpy 3d array to store the Z3 boolean variables
+# the first dimension represents a complete 2d layer for each present
+# the last 2 dimensions are the 2d coordinates of each available position
 
 pos = np.empty((n, paper_shape[0], paper_shape[1]), dtype=object)
 
-
-# variable creation
+# model variables definition
 for i in range(paper_shape[0]):
     for j in range(paper_shape[1]):
-        for k in range(n):
-            #print(k,i,j)
+        for k in range(n): # layers
             pos[k,i,j] = Bool('p'+str(k)+str(i)+str(j))
         # non-overlapping constraint
-        # at most one layer is occupied for each 2d position
+        # at most one layer is occupied in i,j for each 2d position
 
-        notoverlap = Not(Or(*[And(pos[k1,i,j], pos[k2,i,j]) for k1 in range(n) for k2 in range(k1)]))
-        #print(notoverlap)
+        notoverlap = Not(Or(*[And(pos[k1,i,j], pos[k2,i,j]) for k1 in range(n) for k2 in range(k1+1,n)]))
         s.add(notoverlap)
 
-        # total area occupation assumption: ===>  NO VALID FOR PERIMETER
+        # total area occupation assumption:
         # at least one layer is occupied for each 2d position
-        #s.add(Or([pos[k,i,j] for k in range(n)]))
-
+        if present_area == paper_area:
+            o = Or([pos[k,i,j] for k in range(n)])
+            s.add(o)
 
 # the convolutions
-# for each layer/shape
-# at least one set of variables representing one rect present must be all ture
-# meaning that the layer represents effectively a present
-# here the at most is mandatory
+
+# for each layer
+# exactly one set of variables representing that rectangular present must be true
+# meaning that the layer effectively represents the present
 
 for k in range(n):
     conj = []
-    for i in range(paper_shape[0]-present_shape[k][0]+1): # +1 perchè l'occupazione deve arrivare in fondo!
+    for i in range(paper_shape[0]-present_shape[k][0]+1):
         for j in range(paper_shape[1]-present_shape[k][1]+1):
-            # at least
-            tmp = []
-            tmp += [pos[k,x,j] for x in range(i,i+present_shape[k][0])]
-            tmp += [pos[k,x,j+present_shape[k][1]-1] for x in range(i,i+present_shape[k][0])]
-            tmp += [pos[k,i,y] for y in range(j+1,j+present_shape[k][1])]
-            tmp += [pos[k,i+present_shape[k][0]-1,y] for y in range(j+1,j+present_shape[k][1])]
-            conj.append(And(*tmp))
+            # for each possible present position in its layer
 
-    # at least
+            occupations = []
+            for x in range(paper_shape[0]):
+                for y in range(paper_shape[1]):
+                    if (i <= x < i+present_shape[k][0] and j<= y < j+present_shape[k][1]):
+                        occupations.append(pos[k,x,y])
+                    else:
+                        occupations.append(Not(pos[k,x,y]))
+
+            conj.append(And(*occupations))
+
+    # at least one
     disj = Or(*conj)
     s.add(disj)
 
     # at most
-    cc = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(i) if i != j]
-    print(cc)
+    cc = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(len(conj)) if i != j]
     s.add((Not(Or(*cc))))
 
 
@@ -95,62 +104,40 @@ print("compiled in:", time.time()-t_start)
 print("traversing model...")
 t_start = time.time()
 print(s.check())
-print(s.unsat_core())
+
+for k, v in s.statistics():
+    print(k, v)
+    
 print("solved in:", time.time()-t_start)
 
+# visualize solution
+pos_vis = np.zeros((n, paper_shape[0], paper_shape[1]), dtype=int)
 m = s.model()
 for k in range(n):
     for i in range(paper_shape[0]):
         for j in range(paper_shape[1]):
-            print('#',end = '') if m[pos[k,i,j]] else print('.',end = '')
-        print()
+            if m[pos[k,i,j]]:
+                pos_vis[k,i,j] = 1
+            else:
+                pos_vis[k,i,j] = 0
+
+def visual(pos):
+    for i in range(paper_shape[0]):
+        row = ''
+        for j in range(paper_shape[1]):
+            if pos[j,paper_shape[0]-i-1] == 1:
+                row += "# "
+            elif pos[j,paper_shape[0]-i-1] == 0:
+                row += ". "
+            else:
+                row += 'o '
+        print(row)
     print()
 
+for p in pos_vis:
+    visual(p)
 
-
-
-"""
-for d in sorted(m.decls(), key=lambda x: (int(x.name()[1:]), x.name()[0])):
-    print("%s = %s" % (d.name(), m[d]))
-    solution.append(m[d].as_long())
-
-solution = [(solution[i*2],solution[i*2+1]) for i in range(len(solution)//2)]
-print(solution)
-print(present_shape)
-
-scale = 20
-img = Image.new("RGB", (scale * paper_shape[0], scale *paper_shape[1]))
-
-import random
-number_of_colors = n
-
-color = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-             for i in range(number_of_colors)]
-
-for i,s in enumerate(solution):
-    img1 = ImageDraw.Draw(img)
-    img1.rectangle([(scale*s[0],scale*(paper_shape[1]- s[1])),(scale*(s[0]+ present_shape[i][0])-1, scale*(paper_shape[1] - present_shape[i][1]- s[1]))],
-    fill = color[i])
-
-img.show()
-
-
-"""
-"""
-rects = []
-for i,coord in enumerate(solution):
-    rects.append(patches.Rectangle((coord[0],coord[1]),
-    present_shape[i][0],present_shape[i][1], linewidth = 3))
-
-# Create figure and axes
-fig,ax = plt.subplots(1)
-
-#ax.add_patch(patches.Rectangle((0,0), paper_shape[0],paper_shape[1]))
-
-plt.Line2D((0,0),(paper_shape[0],paper_shape[1]))
-# Add the patch to the Axes
-for rect in rects:
-    ax.add_patch(rect)
-
-plt.show()
-"""
+print('sum to:')
+visual(np.sum(pos_vis, axis = 0))
+print('legend:')
+print('. - empty', '# - occupied', 'o - overlap', sep = '\n')
