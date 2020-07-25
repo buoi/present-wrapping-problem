@@ -2,8 +2,8 @@ from z3 import *
 import sys
 import time
 import numpy as np
+import argparse
 
-t_start = time.time()
 def read_txt(if_name):
     """read instance from input"""
     n = 0
@@ -35,7 +35,10 @@ def read_txt(if_name):
     input_file.close()
     return n, paper_shape, present_shape
 
-if_name = sys.argv[1]
+parser = argparse.ArgumentParser(description='Present wrapping problem SAT solver')
+parser.add_argument('input_file', help='input instance file in txt format')
+args = parser.parse_args()
+if_name = args.input_file
 
 n, paper_shape, present_shape = read_txt(if_name)
 print(n, paper_shape, present_shape)
@@ -43,7 +46,7 @@ print(n, paper_shape, present_shape)
 present_area = np.sum([present_shape[i][0] * present_shape[i][1] for i in range(n)])
 paper_area = paper_shape[0] * paper_shape[1]
 print('present area:',present_area,'paper area:',paper_area)
-
+t_start = time.time()
 s = Solver()
 
 # use a numpy 3d array to store the Z3 boolean variables
@@ -96,18 +99,16 @@ for k in range(n):
     s.add(disj)
 
     # at most
-    cc = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(len(conj)) if i != j]
-    s.add((Not(Or(*cc))))
+    conj_pairs = [And(conj[i],conj[j]) for i in range(len(conj)) for j in range(i) if i != j]
+    s.add((Not(Or(*conj_pairs))))
 
 
 print("compiled in:", time.time()-t_start)
 print("traversing model...")
 t_start = time.time()
 print(s.check())
-
 for k, v in s.statistics():
     print(k, v)
-    
 print("solved in:", time.time()-t_start)
 
 # visualize solution

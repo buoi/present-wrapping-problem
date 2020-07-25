@@ -1,8 +1,7 @@
 from z3 import *
-import sys
 import numpy as np
 import time, datetime
-
+import argparse
 
 def read_txt(if_name):
     """read instance from input"""
@@ -35,11 +34,18 @@ def read_txt(if_name):
     input_file.close()
     return n, paper_shape, present_shape
 
-if_name = sys.argv[1]
-if sys.argv[-1] == 'y':
-    vis_image_out = True
-else:
-    vis_image_out = False
+parser = argparse.ArgumentParser(description='Present wrapping problem SMT solver')
+parser.add_argument('input_file', help='input instance file in txt format')
+parser.add_argument('--visual','-v', default=False, action='store_true', help='output a png image of the solution')
+parser.add_argument('--output_to_file','-o', default=False, action='store_true',help='produce output file in the same path as input one')
+
+args = parser.parse_args()
+
+print(args.input_file,args.visual,args.output_to_file)
+
+if_name = args.input_file
+vis_image_out = args.visual
+output_to_file = args.output_to_file
 
 n, paper_shape, present_shape = read_txt(if_name)
 print(n, paper_shape, present_shape)
@@ -60,13 +66,13 @@ for i in range(n):
 # non-overlapping constraint: each pair of presents must not overlap
 for i in range(n):
     for j in range(i): # does not repeat pairs ij, ji
-
         s.add(Or(present_pos[i][0] + present_shape[i][0] <= present_pos[j][0],
         present_pos[i][0] >= present_pos[j][0] + present_shape[j][0],
         present_pos[i][1] + present_shape[i][1] <= present_pos[j][1],
         present_pos[i][1] >= present_pos[j][1] + present_shape[j][1]))
 
 # implied constraint for each row and column
+"""
 for k in (0,1):
     for j in range(paper_shape[k]):
         partial_sum = []
@@ -75,7 +81,7 @@ for k in (0,1):
             partial_sum.append(inc)
 
         s.add(sum(partial_sum) <= paper_shape[k])
-
+"""
 print("compiled in:", time.time()-t_start)
 
 # solving
@@ -101,6 +107,7 @@ solution = [[solution[i*2], solution[i*2+1]] for i in range(len(solution)//2)]
 
 print("solution:",solution)
 print("shapes:  ",present_shape)
+print()
 
 # visualization by numpy array
 pos = np.zeros((n, paper_shape[0], paper_shape[1]), dtype=int)
@@ -126,15 +133,14 @@ for p in pos:
     visual(p)
 
 # save result to output file
-"""
-of_name = if_name.strip('.txt')+'-out.txt'
+if output_to_file:
+    of_name = if_name.strip('.txt')+'-out.txt'
 
-with open(of_name,'w') as f:
-    f.write(str(paper_shape[0])+' '+str(paper_shape[1])+'\n')
-    f.write(str(n)+'\n')
-    for shape, sol in zip(present_shape,solution):
-        f.write(f"{shape[0]} {shape[1]}\t{sol[0]} {sol[1]}\n")
-"""
+    with open(of_name,'w') as f:
+        f.write(str(paper_shape[0])+' '+str(paper_shape[1])+'\n')
+        f.write(str(n)+'\n')
+        for shape, sol in zip(present_shape,solution):
+            f.write(f"{shape[0]} {shape[1]}\t{sol[0]} {sol[1]}\n")
 
 print('sum to:')
 visual(np.sum(pos, axis = 0))
