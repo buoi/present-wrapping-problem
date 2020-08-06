@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(description='Present wrapping problem SMT solve
 parser.add_argument('input_file', help='input instance file in txt format')
 parser.add_argument('--visual','-v', default=False, action='store_true', help='output a png image of the solution')
 parser.add_argument('--output_to_file','-o', default=False, action='store_true',help='produce output file in the same path as input one')
-
+parser.add_argument('--allow_rotations','-r', default=False, action='store_true', help='allow the rotation of each piece in searching for a solution')
 args = parser.parse_args()
 
 print(args.input_file,args.visual,args.output_to_file)
@@ -46,6 +46,7 @@ print(args.input_file,args.visual,args.output_to_file)
 if_name = args.input_file
 vis_image_out = args.visual
 output_to_file = args.output_to_file
+rotation_enabled = args.allow_rotations
 
 n, paper_shape, present_shape = read_txt(if_name)
 print(n, paper_shape, present_shape)
@@ -55,33 +56,37 @@ t_start = time.time()
 
 s = Solver()
 present_pos = []
-
+present_rot = []
+present_roted_shape = []
 # add present_pos variables to the model
 # constraint coordinates to not exceed the available paper
 for i in range(n):
     present_pos.append((Int('x'+str(i)), Int('y'+str(i))))
+    present_rot.append(Bool('r'+str(i)))
+    present_roted_shape.append([0,0])
     for j in range(2):
-        s.add(0 <= present_pos[i][j], present_pos[i][j] <= paper_shape[j] - present_shape[i][j])
+        present_roted_shape[i][j] = If(And(present_rot[i], rotation_enabled), present_shape[i][1-j], present_shape[i][j])
+        s.add(0 <= present_pos[i][j], present_pos[i][j] <= paper_shape[j] - present_roted_shape[i][j])
 
 # non-overlapping constraint: each pair of presents must not overlap
 for i in range(n):
     for j in range(i): # does not repeat pairs ij, ji
-        s.add(Or(present_pos[i][0] + present_shape[i][0] <= present_pos[j][0],
-        present_pos[i][0] >= present_pos[j][0] + present_shape[j][0],
-        present_pos[i][1] + present_shape[i][1] <= present_pos[j][1],
-        present_pos[i][1] >= present_pos[j][1] + present_shape[j][1]))
+        s.add(Or(present_pos[i][0] + present_roted_shape[i][0] <= present_pos[j][0],
+        present_pos[i][0] >= present_pos[j][0] + present_roted_shape[j][0],
+        present_pos[i][1] + present_roted_shape[i][1] <= present_pos[j][1],
+        present_pos[i][1] >= present_pos[j][1] + present_roted_shape[j][1]))
 
 # implied constraint for each row and column
-"""
 for k in (0,1):
     for j in range(paper_shape[k]):
         partial_sum = []
         for i in range(n): # check present column/row occupation
-            inc = If(And(present_pos[i][k] <= j, present_pos[i][k] + present_shape[i][k] > j), present_shape[i][1-k], 0)
+            inc = If(And(present_pos[i][k] <= j, present_pos[i][k] + present_roted_shape[i][k] > j),
+                present_roted_shape[i][1-k],
+                0)
             partial_sum.append(inc)
 
         s.add(sum(partial_sum) <= paper_shape[k])
-"""
 print("compiled in:", time.time()-t_start)
 
 # solving
@@ -94,6 +99,10 @@ for k, v in s.statistics():
 
 print("solved in:", time.time()-t_start)
 m = s.model()
+
+if rotation_enabled:
+    print(m)
+    quit(0)
 
 solution = []
 
