@@ -14,7 +14,7 @@ array[1..n,1..2] of int: present_shape;
 % domain constrained to be a positive int below paper dimensions
 array[1..n,1..2] of var 0..max(paper_shape): present_pos;
 % each rectagle can have just 2 possible rotations
-array[1..n] of var bool: rotations = [false | i in 1..n]; % uncomment to disallow rotations
+array[1..n] of var bool: rotations = [false | i in 1..n]; % comment to allow rotations
 % returns the present measure according to the rotation state
 function var int : present_rot(int: i, int: j) = 
   if rotations[i] then present_shape[i, 3-j] 
@@ -54,15 +54,6 @@ constraint forall(j in 1..2)(
   present_pos[1,j] < (paper_shape[j] - present_rot(1,j)) / 2
 );   
 
-% ======== SAME SHAPE SIMMETRY ========
-%array delle posizioni dei pezzi uguali
-%array[1..n,1..2] of var 1..2: x;
-
-%x (1,2) (30,4) ok
-%x (30,4) (1,2) not ok
-
-%constraint lex_lesseq(x, reverse(x));
-
 % ======== SEARCH HEURISTICS ========
 % first fail with indomain_min for each coordinate
 % search_ann_y expecially helps due to the great asymmetry of the instancess
@@ -71,7 +62,7 @@ search_ann_y = int_search(present_pos[1..n,2], first_fail, indomain_min);
 ann: search_ann_x;
 search_ann_x = int_search(present_pos[1..n,1], first_fail, indomain_min); 
 
-solve :: search_ann_y :: search_ann_x satisfy;
+solve :: search_ann_y satisfy;
 
-output [ "[\(present_pos[i,1]), \(present_pos[i,2]) \(rotations[i])], " | i in 1..n ];
-%output ["\(present_pos[i,j])" | i in 1..n, j in 1..2] 
+output [ "\(paper_shape[1]) \(paper_shape[2])\n\(n)\n" ];
+output [ "\(present_shape[i,1]) \(present_shape[i,2]) \(present_pos[i,1]) \(present_pos[i,2])\n" | i in 1..n ];
