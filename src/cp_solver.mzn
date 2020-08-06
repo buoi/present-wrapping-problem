@@ -62,7 +62,7 @@ search_ann_y = int_search(present_pos[1..n,2], first_fail, indomain_min);
 ann: search_ann_x;
 search_ann_x = int_search(present_pos[1..n,1], first_fail, indomain_min); 
 
-solve :: search_ann_y satisfy;
+solve :: search_ann_y :: search_ann_x satisfy;
 
 output [ "\(paper_shape[1]) \(paper_shape[2])\n\(n)\n" ];
 output [ "\(present_shape[i,1]) \(present_shape[i,2]) \(present_pos[i,1]) \(present_pos[i,2])\n" | i in 1..n ];
