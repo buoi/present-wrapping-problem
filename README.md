@@ -18,6 +18,6 @@ SMT:
 
 . `python3 smt_solver.py smt/instances/<instance.txt> -v` produces a png image of the solution (requires python pillow)
 
-SAT:
+SAT:  
 . `python3 sat_solver.py sat/instances/<instance.txt>` produces output to the terminal
 
