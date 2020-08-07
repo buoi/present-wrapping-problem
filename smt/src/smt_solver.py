@@ -77,6 +77,7 @@ for i in range(n):
         present_pos[i][1] >= present_pos[j][1] + present_roted_shape[j][1]))
 
 # implied constraint for each row and column
+'''
 for k in (0,1):
     for j in range(paper_shape[k]):
         partial_sum = []
@@ -87,6 +88,7 @@ for k in (0,1):
             partial_sum.append(inc)
 
         s.add(sum(partial_sum) <= paper_shape[k])
+'''
 print("compiled in:", time.time()-t_start)
 
 # solving
@@ -138,8 +140,8 @@ def visual(pos):
         print(row)
     print()
 
-for p in pos:
-    visual(p)
+#for p in pos:
+#    visual(p)
 
 # save result to output file
 if output_to_file:

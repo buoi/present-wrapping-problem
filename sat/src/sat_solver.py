@@ -48,7 +48,7 @@ paper_area = paper_shape[0] * paper_shape[1]
 print('present area:',present_area,'paper area:',paper_area)
 t_start = time.time()
 s = Solver()
-
+print("========================", get_param("memory_max_alloc_count"))
 # use a numpy 3d array to store the Z3 boolean variables
 # the first dimension represents a complete 2d layer for each present
 # the last 2 dimensions are the 2d coordinates of each available position
