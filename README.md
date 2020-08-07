@@ -6,7 +6,7 @@
 - CP in MiniZinc
 
 run `cp_solver.mzn` from the Minizinc IDE,
-.dzn converted instances are provided inside the `dzn/instances/` folder
+.dzn converted instances are provided inside the `cp/instances/` folder
 
 - Z3
 
