@@ -7,7 +7,7 @@ In this project we present solutions with MiniZinc Constraint Programming modell
 
 **Instructions for launching:**
 
-### CP in MiniZinc [Report](cp/report.pdf)
+### CP in MiniZinc:  [Report](cp/report.pdf)
 
 run `cp_solver.mzn` from the Minizinc IDE,
 .dzn converted instances are provided inside the `cp/instances/` folder
